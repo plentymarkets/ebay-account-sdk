@@ -1,8 +1,8 @@
 .gitignore
-.openapi-generator-ignore
 .travis.yml
 README.md
 api/openapi.yaml
+api_custom_policy.go
 api_fulfillment_policy.go
 api_kyc.go
 api_onboarding.go
@@ -17,6 +17,12 @@ client.go
 configuration.go
 docs/Amount.md
 docs/CategoryType.md
+docs/CompactCustomPolicyResponse.md
+docs/CustomPolicy.md
+docs/CustomPolicyApi.md
+docs/CustomPolicyCreateRequest.md
+docs/CustomPolicyRequest.md
+docs/CustomPolicyResponse.md
 docs/Deposit.md
 docs/Error.md
 docs/ErrorParameter.md
@@ -69,6 +75,11 @@ go.mod
 go.sum
 model_amount.go
 model_category_type.go
+model_compact_custom_policy_response.go
+model_custom_policy.go
+model_custom_policy_create_request.go
+model_custom_policy_request.go
+model_custom_policy_response.go
 model_deposit.go
 model_error.go
 model_error_parameter.go
