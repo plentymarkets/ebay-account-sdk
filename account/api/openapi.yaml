@@ -3,8 +3,8 @@ info:
   contact:
     name: eBay Inc,
   description: The <b>Account API</b> gives sellers the ability to configure their
-    eBay seller accounts, including the seller's policies (the Fulfillment Policy,
-    Payment Policy, and Return Policy), opt in and out of eBay seller programs, configure
+    eBay seller accounts, including the seller's policies (seller-defined custom policies
+    and eBay business policies), opt in and out of eBay seller programs, configure
     sales tax tables, and get account information.  <br><br>For details on the availability
     of the methods in this API, see <a href="/api-docs/sell/account/overview.html#requirements">Account
     API requirements and restrictions</a>.
@@ -12,7 +12,7 @@ info:
     name: eBay API License Agreement
     url: https://go.developer.ebay.com/api-license-agreement
   title: Account API
-  version: v1.6.3
+  version: v1.7.0
 servers:
 - description: Production
   url: https://api.ebay.com{basePath}
@@ -20,53 +20,65 @@ servers:
     basePath:
       default: /sell/account/v1
 paths:
-  /fulfillment_policy:
+  /custom_policy/:
     get:
-      description: 'This method retrieves all the fulfillment policies configured
-        for the marketplace you specify using the <code>marketplace_id</code> query
-        parameter.  <br><br><b>Marketplaces and locales</b>  <br><br>Get the correct
-        policies for a marketplace that supports multiple locales using the <code>Content-Language</code>
-        request header. For example, get the policies for the French locale of the
-        Canadian marketplace by specifying <code>fr-CA</code> for the <code>Content-Language</code>
-        header. Likewise, target the Dutch locale of the Belgium marketplace by setting
-        <code>Content-Language: nl-BE</code>. For details on header values, see <a
-        href="/api-docs/static/rest-request-components.html#HTTP" target="_blank">HTTP
-        request headers</a>.'
-      operationId: getFulfillmentPolicies
+      description: 'This method retrieves the list of custom policies specified by
+        the <b>policy_types</b> query parameter for the selected eBay marketplace.<br/>
+        <br/> <span class="tablenote"><strong>Note:</strong> The following eBay marketplaces
+        support Custom Policies: <ul><li>Germany (EBAY_DE)</li> <li>Canada (EBAY_CA)</li>
+        <li>Australia (EBAY_AU)</li> <li>United States (EBAY_US)</li> <li>France (EBAY_FR)</li></ul></span><br/><br/>For
+        details on header values, see <a href="/api-docs/static/rest-request-components.html#HTTP"
+        target="_blank">HTTP request headers</a>.'
+      operationId: getCustomPolicies
       parameters:
-      - description: This query parameter specifies the eBay marketplace of the policies
-          you want to retrieve. For implementation help, refer to eBay API documentation
-          at https://developer.ebay.com/api-docs/sell/account/types/ba:MarketplaceIdEnum
+      - description: 'This query parameter specifies the type of custom policies to
+          be returned.<br /><br />Multiple policy types may be requested in a single
+          call by providing a comma-delimited set of all policy types to be returned.<br/><br/><span
+          class="tablenote"><strong>Note:</strong> Omitting this query parameter from
+          a request will also return policies of all policy types.</span><br/><br/>Two
+          Custom Policy types are supported: <ul><li>Product Compliance (PRODUCT_COMPLIANCE)</li>
+          <li>Takeback (TAKE_BACK)</li></ul>'
         explode: true
         in: query
-        name: marketplace_id
-        required: true
+        name: policy_types
+        required: false
         schema:
           type: string
         style: form
+      - description: 'This header parameter specifies the eBay markeplace for the
+          custom policy that is being created. Supported values for this header can
+          be found in the <a href="/api-docs/sell/compliance/types/bas:MarketplaceIdEnum"
+          target="_blank">MarketplaceIdEnum</a> type definition.<br/> <br/> <span
+          class="tablenote"><strong>Note:</strong> The following eBay marketplaces
+          support Custom Policies: <ul><li>Germany (EBAY_DE)</li> <li>Canada (EBAY_CA)</li>
+          <li>Australia (EBAY_AU)</li> <li>United States (EBAY_US)</li> <li>France
+          (EBAY_FR)</li></ul></span>'
+        explode: false
+        in: header
+        name: X-EBAY-C-MARKETPLACE-ID
+        required: true
+        schema:
+          type: string
+        style: simple
       responses:
         "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/FulfillmentPolicyResponse'
+                $ref: '#/components/schemas/CustomPolicyResponse'
           description: Success
         "400":
           description: Bad Request
           x-response-codes:
             errors:
-              "20401":
+              "20411":
                 domain: API_ACCOUNT
                 category: REQUEST
-                description: Missing field {fieldName}. {additionalInfo}
-              "20403":
+                description: Invalid/Missing policyTypes {policyType}
+              "20415":
                 domain: API_ACCOUNT
                 category: REQUEST
-                description: Invalid {fieldName}. {additionalInfo}
-              "20404":
-                domain: API_ACCOUNT
-                category: REQUEST
-                description: '{fieldName} not found.'
+                description: Invalid/Missing marketplaceId
         "500":
           description: Internal Server Error
           x-response-codes:
@@ -75,16 +87,288 @@ paths:
                 domain: API_ACCOUNT
                 category: APPLICATION
                 description: System error.
-              "20501":
-                domain: API_ACCOUNT
-                category: APPLICATION
-                description: Service unavailable. Please try again in next 24 hours.
       security:
       - api_auth:
         - https://api.ebay.com/oauth/api_scope/sell.account
         - https://api.ebay.com/oauth/api_scope/sell.account.readonly
       tags:
-      - fulfillment_policy
+      - custom_policy
+    post:
+      description: 'This method creates a new custom policy in which a seller specifies
+        their terms for complying with local governmental regulations. <br/><br/>Two
+        Custom Policy types are supported: <ul><li>Product Compliance (PRODUCT_COMPLIANCE)</li>
+        <li>Takeback (TAKE_BACK)</li></ul>Each Custom Policy targets a <b>policyType</b>
+        and <b>eBay marketplace</b> combination. Multiple policies may be created
+        as follows: <ul><li><b>Product Compliance</b>: a maximum of 10 policies per
+        eBay marketplace may be created</li> <li><b>Takeback</b>: a maximum of 3 policies
+        per eBay marketplace may be created</li></ul>A successful create policy call
+        returns an HTTP status code of <b>201 Created</b> with the system-generated
+        policy ID included in the <b>Location</b> response header.<br/><br/><b>Product
+        Compliance Policy</b><br/><br/>Product Compliance policies disclose product
+        information as required for regulatory compliance.<br/><br/><span class="tablenote"><strong>Note:</strong>
+        A maximum of 10 Product Compliance policies per eBay marketplace may be created.</span>
+        <br/><br/> <b>Takeback Policy</b><br/><br/>Takeback policies describe the
+        seller''s legal obligation to take back a previously purchased item when the
+        buyer purchases a new one.<br/><br/><span class="tablenote"><strong>Note:</strong>
+        A maximum of 3 Takeback policies per eBay marketplace may be created.</span>'
+      operationId: createCustomPolicy
+      parameters:
+      - description: 'This header parameter specifies the eBay markeplace for the
+          custom policy that is being created. Supported values for this header can
+          be found in the <a href="/api-docs/sell/compliance/types/bas:MarketplaceIdEnum"
+          target="_blank">MarketplaceIdEnum</a> type definition.<br/> <br/> <span
+          class="tablenote"><strong>Note:</strong> The following eBay marketplaces
+          support Custom Policies: <ul><li>Germany (EBAY_DE)</li> <li>Canada (EBAY_CA)</li>
+          <li>Australia (EBAY_AU)</li> <li>United States (EBAY_US)</li> <li>France
+          (EBAY_FR)</li></ul></span>'
+        explode: false
+        in: header
+        name: X-EBAY-C-MARKETPLACE-ID
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomPolicyCreateRequest'
+        description: Request to create a new Custom Policy.
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                type: object
+          description: Created
+          headers:
+            Location:
+              explode: false
+              schema:
+                description: The <b>location</b> response header contains the URL
+                  to the newly created custom policy. The URL includes the eBay-assigned
+                  <code>custom_policy_id</code>, which can be used to reference the
+                  policy.
+                type: string
+              style: simple
+        "400":
+          description: Bad Request
+          x-response-codes:
+            errors:
+              "20411":
+                domain: API_ACCOUNT
+                category: REQUEST
+                description: Invalid/Missing policyType
+              "20412":
+                domain: API_ACCOUNT
+                category: REQUEST
+                description: Invalid/Missing label
+              "20413":
+                domain: API_ACCOUNT
+                category: REQUEST
+                description: Invalid/Missing name
+              "20414":
+                domain: API_ACCOUNT
+                category: REQUEST
+                description: Invalid/Missing description
+              "20415":
+                domain: API_ACCOUNT
+                category: REQUEST
+                description: Invalid/Missing marketplaceId
+              "20417":
+                domain: API_ACCOUNT
+                category: REQUEST
+                description: Maximum custom policy per site is reached
+              "20418":
+                domain: API_ACCOUNT
+                category: REQUEST
+                description: This policy name is already used
+        "409":
+          description: Policy Name already used/ Maximum no of policies per site reached
+        "500":
+          description: Internal Server Error
+          x-response-codes:
+            errors:
+              "20500":
+                domain: API_ACCOUNT
+                category: APPLICATION
+                description: System error.
+      security:
+      - api_auth:
+        - https://api.ebay.com/oauth/api_scope/sell.account
+      tags:
+      - custom_policy
+  /custom_policy/{custom_policy_id}:
+    get:
+      description: 'This method retrieves the custom policy specified by the <b>custom_policy_id</b>
+        path parameter for the selected eBay marketplace.<br/> <br/> <span class="tablenote"><strong>Note:</strong>
+        The following eBay marketplaces support Custom Policies: <ul><li>Germany (EBAY_DE)</li>
+        <li>Canada (EBAY_CA)</li> <li>Australia (EBAY_AU)</li> <li>United States (EBAY_US)</li>
+        <li>France (EBAY_FR)</li></ul></span><br/><br/>For details on header values,
+        see <a href="/api-docs/static/rest-request-components.html#HTTP" target="_blank">HTTP
+        request headers</a>.'
+      operationId: getCustomPolicy
+      parameters:
+      - description: This path parameter is the unique custom policy identifier for
+          the policy to be returned.<br/><br/><span class="tablenote"><strong>Note:</strong>
+          This value is automatically assigned by the system when the policy is created.</span>
+        explode: false
+        in: path
+        name: custom_policy_id
+        required: true
+        schema:
+          type: string
+        style: simple
+      - description: 'This header parameter specifies the eBay markeplace for the
+          custom policy that is being created. Supported values for this header can
+          be found in the <a href="/api-docs/sell/compliance/types/bas:MarketplaceIdEnum"
+          target="_blank">MarketplaceIdEnum</a> type definition.<br/> <br/> <span
+          class="tablenote"><strong>Note:</strong> The following eBay marketplaces
+          support Custom Policies: <ul><li>Germany (EBAY_DE)</li> <li>Canada (EBAY_CA)</li>
+          <li>Australia (EBAY_AU)</li> <li>United States (EBAY_US)</li> <li>France
+          (EBAY_FR)</li></ul></span>'
+        explode: false
+        in: header
+        name: X-EBAY-C-MARKETPLACE-ID
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomPolicy'
+          description: Success
+        "400":
+          description: Bad Request
+          x-response-codes:
+            errors:
+              "20415":
+                domain: API_ACCOUNT
+                category: REQUEST
+                description: Invalid/Missing marketplaceId
+              "20416":
+                domain: API_ACCOUNT
+                category: REQUEST
+                description: Invalid/Missing customPolicyId
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
+          x-response-codes:
+            errors:
+              "20500":
+                domain: API_ACCOUNT
+                category: APPLICATION
+                description: System error.
+      security:
+      - api_auth:
+        - https://api.ebay.com/oauth/api_scope/sell.account
+        - https://api.ebay.com/oauth/api_scope/sell.account.readonly
+      tags:
+      - custom_policy
+    put:
+      description: 'This method updates an existing custom policy specified by the
+        <b>custom_policy_id</b> path parameter for the selected marketplace. This
+        method overwrites the policy''s <b>Name</b>, <b>Label</b>, and <b>Description</b>
+        fields. Therefore, the complete, current text of all three policy fields must
+        be included in the request payload even when one or two of these fields will
+        not actually be updated.<br/> <br/>For example, the value for the <b>Label</b>
+        field is to be updated, but the <b>Name</b> and <b>Description</b> values
+        will remain unchanged. The existing <b>Name</b> and <b>Description</b> values,
+        as they are defined in the current policy, must also be passed in. <br/><br/>A
+        successful policy update call returns an HTTP status code of <b>204 No Content</b>.<br/><br/><span
+        class="tablenote"><strong>Note:</strong> The following eBay marketplaces support
+        Custom Policies: <ul><li>Germany (EBAY_DE)</li> <li>Canada (EBAY_CA)</li>
+        <li>Australia (EBAY_AU)</li> <li>United States (EBAY_US)</li> <li>France (EBAY_FR)</li></ul></span><br/><br/>For
+        details on header values, see <a href="/api-docs/static/rest-request-components.html#HTTP">HTTP
+        request headers</a>.'
+      operationId: updateCustomPolicy
+      parameters:
+      - description: This path parameter is the unique custom policy identifier for
+          the policy to be returned.<br/><br/><span class="tablenote"><strong>Note:</strong>
+          This value is automatically assigned by the system when the policy is created.</span>
+        explode: false
+        in: path
+        name: custom_policy_id
+        required: true
+        schema:
+          type: string
+        style: simple
+      - description: 'This header parameter specifies the eBay markeplace for the
+          custom policy that is being created. Supported values for this header can
+          be found in the <a href="/api-docs/sell/compliance/types/bas:MarketplaceIdEnum"
+          target="_blank">MarketplaceIdEnum</a> type definition.<br/> <br/> <span
+          class="tablenote"><strong>Note:</strong> The following eBay marketplaces
+          support Custom Policies: <ul><li>Germany (EBAY_DE)</li> <li>Canada (EBAY_CA)</li>
+          <li>Australia (EBAY_AU)</li> <li>United States (EBAY_US)</li> <li>France
+          (EBAY_FR)</li></ul></span>'
+        explode: false
+        in: header
+        name: X-EBAY-C-MARKETPLACE-ID
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomPolicyRequest'
+        description: Request to update a current custom policy.
+        required: true
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          x-response-codes:
+            errors:
+              "20412":
+                domain: API_ACCOUNT
+                category: REQUEST
+                description: Invalid/Missing label
+              "20413":
+                domain: API_ACCOUNT
+                category: REQUEST
+                description: Invalid/Missing name
+              "20414":
+                domain: API_ACCOUNT
+                category: REQUEST
+                description: Invalid/Missing description
+              "20415":
+                domain: API_ACCOUNT
+                category: REQUEST
+                description: Invalid/Missing marketplaceId
+              "20416":
+                domain: API_ACCOUNT
+                category: REQUEST
+                description: Invalid/Missing customPolicyId
+              "20418":
+                domain: API_ACCOUNT
+                category: REQUEST
+                description: This policy name is already used
+        "404":
+          description: Not Found
+        "409":
+          description: Policy Name already used/ Maximum no of policies per site reached
+        "500":
+          description: Internal Server Error
+          x-response-codes:
+            errors:
+              "20500":
+                domain: API_ACCOUNT
+                category: APPLICATION
+                description: System error.
+      security:
+      - api_auth:
+        - https://api.ebay.com/oauth/api_scope/sell.account
+      tags:
+      - custom_policy
+  /fulfillment_policy/:
     post:
       description: 'This method creates a new fulfillment policy where the policy
         encapsulates seller''s terms for fulfilling item purchases. Fulfillment policies
@@ -107,7 +391,12 @@ paths:
         locale for <code>Content-Language</code>. Likewise, target the Dutch locale
         of the Belgium marketplace by setting <code>Content-Language: nl-BE</code>.</p>
         <p class="tablenote"><b>Tip:</b> For details on headers, see <a href="/api-docs/static/rest-request-components.html#HTTP">HTTP
-        request headers</a>.</p>'
+        request headers</a>.</p><p><b>Using the eBay standard envelope service (eSE)</b></p>  <p>The
+        eBay standard envelope service (eSE) is a domestic envelope service with tracking
+        through eBay. This service applies to specific Trading Cards categories (not
+        all categories are supported), and to Coins & Paper Money, Postcards, and
+        Stamps. See <a href="/api-docs/sell/static/seller-accounts/using-the-ebay-standard-envelope-service.html"
+        target="_blank">Using the eBay standard envelope (eSE) service</a>.</p>'
       operationId: createFulfillmentPolicy
       requestBody:
         content:
@@ -391,6 +680,71 @@ paths:
       security:
       - api_auth:
         - https://api.ebay.com/oauth/api_scope/sell.account
+      tags:
+      - fulfillment_policy
+  /fulfillment_policy:
+    get:
+      description: 'This method retrieves all the fulfillment policies configured
+        for the marketplace you specify using the <code>marketplace_id</code> query
+        parameter.  <br><br><b>Marketplaces and locales</b>  <br><br>Get the correct
+        policies for a marketplace that supports multiple locales using the <code>Content-Language</code>
+        request header. For example, get the policies for the French locale of the
+        Canadian marketplace by specifying <code>fr-CA</code> for the <code>Content-Language</code>
+        header. Likewise, target the Dutch locale of the Belgium marketplace by setting
+        <code>Content-Language: nl-BE</code>. For details on header values, see <a
+        href="/api-docs/static/rest-request-components.html#HTTP" target="_blank">HTTP
+        request headers</a>.'
+      operationId: getFulfillmentPolicies
+      parameters:
+      - description: This query parameter specifies the eBay marketplace of the policies
+          you want to retrieve. For implementation help, refer to eBay API documentation
+          at https://developer.ebay.com/api-docs/sell/account/types/ba:MarketplaceIdEnum
+        explode: true
+        in: query
+        name: marketplace_id
+        required: true
+        schema:
+          type: string
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FulfillmentPolicyResponse'
+          description: Success
+        "400":
+          description: Bad Request
+          x-response-codes:
+            errors:
+              "20401":
+                domain: API_ACCOUNT
+                category: REQUEST
+                description: Missing field {fieldName}. {additionalInfo}
+              "20403":
+                domain: API_ACCOUNT
+                category: REQUEST
+                description: Invalid {fieldName}. {additionalInfo}
+              "20404":
+                domain: API_ACCOUNT
+                category: REQUEST
+                description: '{fieldName} not found.'
+        "500":
+          description: Internal Server Error
+          x-response-codes:
+            errors:
+              "20500":
+                domain: API_ACCOUNT
+                category: APPLICATION
+                description: System error.
+              "20501":
+                domain: API_ACCOUNT
+                category: APPLICATION
+                description: Service unavailable. Please try again in next 24 hours.
+      security:
+      - api_auth:
+        - https://api.ebay.com/oauth/api_scope/sell.account
+        - https://api.ebay.com/oauth/api_scope/sell.account.readonly
       tags:
       - fulfillment_policy
   /fulfillment_policy/get_by_policy_name:
@@ -1144,6 +1498,14 @@ paths:
                 description: Missing field {fieldName}. {additionalInfo}
         "404":
           description: Not Found
+        "409":
+          description: Conflict
+          x-response-codes:
+            errors:
+              "25803":
+                domain: API_ACCOUNT
+                category: BUSINESS
+                description: '{fieldName} already exists.'
         "500":
           description: Internal Server Error
           x-response-codes:
@@ -1189,8 +1551,14 @@ paths:
                 domain: API_ACCOUNT
                 category: REQUEST
                 description: Missing field {fieldName}. {additionalInfo}
+              "25804":
+                domain: API_ACCOUNT
+                category: REQUEST
+                description: '{fieldName} already exists'
         "404":
           description: Not Found
+        "409":
+          description: Conflict
         "500":
           description: Internal Server Error
           x-response-codes:
@@ -2109,6 +2477,188 @@ components:
             API documentation</a>'
           type: string
       type: object
+    CompactCustomPolicyResponse:
+      description: The response payload for requests that return a list of custom
+        policies.
+      example:
+        policyType: policyType
+        name: name
+        customPolicyId: customPolicyId
+        label: label
+      properties:
+        customPolicyId:
+          description: The unique custom policy identifier for the policy being returned.<br/><br/><span
+            class="tablenote"><strong>Note:</strong> This value is automatically assigned
+            by the system when the policy is created.</span>
+          type: string
+        label:
+          description: Customer-facing label shown on View Item pages for items to
+            which the policy applies. This seller-defined string is displayed as a
+            system-generated hyperlink pointing to detailed policy information.<br/><br/><b>Max
+            length:</b> 65
+          type: string
+        name:
+          description: The seller-defined name for the custom policy. Names must be
+            unique for policies assigned to the same seller, policy type, and eBay
+            marketplace.<br /><span class="tablenote"><strong>Note:</strong> This
+            field is visible only to the seller. </span><br /><br /><b>Max length:</b>
+            65
+          type: string
+        policyType:
+          description: 'Specifies the type of Custom Policy being returned. <br/><br/>Two
+            Custom Policy types are supported: <ul><li>Product Compliance (PRODUCT_COMPLIANCE)</li>
+            <li>Takeback (TAKE_BACK)</li></ul> For implementation help, refer to <a
+            href=''https://developer.ebay.com/api-docs/sell/account/types/api:CustomPolicyTypeEnum''>eBay
+            API documentation</a>'
+          type: string
+      type: object
+    CustomPolicy:
+      description: This container defines a seller's custom policy identified by policy
+        ID for the selected eBay marketplace. A successful call returns the requested
+        policy information.
+      example:
+        policyType: policyType
+        name: name
+        description: description
+        customPolicyId: customPolicyId
+        label: label
+      properties:
+        customPolicyId:
+          description: The unique custom policy identifier for a policy.<br/><br/><span
+            class="tablenote"><strong>Note:</strong> This value is automatically assigned
+            by the system when the policy is created.</span>
+          type: string
+        description:
+          description: Details of the seller's specific policy and terms associated
+            with the policy. Buyers access this information from the View Item page
+            for items to which the policy has been applied.<br><br><b>Max length:</b>
+            15,000
+          type: string
+        label:
+          description: Customer-facing label shown on View Item pages for items to
+            which the policy applies. This seller-defined string is displayed as a
+            system-generated hyperlink pointing to detailed policy information.<br/><br/><b>Max
+            length:</b> 65
+          type: string
+        name:
+          description: The seller-defined name for the custom policy. Names must be
+            unique for policies assigned to the same seller, policy type, and eBay
+            marketplace.<br /><span class="tablenote"><strong>Note:</strong> This
+            field is visible only to the seller. </span><br/><br/><b>Max length:</b>
+            65
+          type: string
+        policyType:
+          description: 'Specifies the type of Custom Policy. <br/><br/>Two Custom
+            Policy types are supported: <ul><li>Product Compliance (PRODUCT_COMPLIANCE)</li>
+            <li>Takeback (TAKE_BACK)</li></ul> For implementation help, refer to <a
+            href=''https://developer.ebay.com/api-docs/sell/account/types/api:CustomPolicyTypeEnum''>eBay
+            API documentation</a>'
+          type: string
+      type: object
+    CustomPolicyCreateRequest:
+      description: This type is used by the request payload of the createCustomPolicy
+        method to define a new custom policy for a specific marketplace.
+      example:
+        policyType: policyType
+        name: name
+        description: description
+        label: label
+      properties:
+        description:
+          description: Details of the seller's specific policy and terms for this
+            policy.<br><br><b>Max length:</b> 15,000
+          type: string
+        label:
+          description: Customer-facing label shown on View Item pages for items to
+            which the policy applies. This seller-defined string is displayed as a
+            system-generated hyperlink pointing to detailed policy information.<br><br><b>Max
+            length:</b> 65
+          type: string
+        name:
+          description: The seller-defined name for the custom policy. Names must be
+            unique for policies assigned to the same seller, policy type, and eBay
+            marketplace.<br /><span class="tablenote"><strong>Note:</strong> This
+            field is visible only to the seller. </span><br/><br/><b>Max length:</b>
+            65
+          type: string
+        policyType:
+          description: 'Specifies the type of custom policy being created. <br/><br/>Two
+            Custom Policy types are supported: <ul><li>Product Compliance (PRODUCT_COMPLIANCE)</li>
+            <li>Takeback (TAKE_BACK)</li></ul> For implementation help, refer to <a
+            href=''https://developer.ebay.com/api-docs/sell/account/types/api:CustomPolicyTypeEnum''>eBay
+            API documentation</a>'
+          type: string
+      type: object
+    CustomPolicyRequest:
+      example:
+        name: name
+        description: description
+        label: label
+      properties:
+        description:
+          description: Details of the seller's specific policy and terms for this
+            policy.<br><br><b>Max length:</b> 15,000
+          type: string
+        label:
+          description: Customer-facing label shown on View Item pages for items to
+            which the policy applies. This seller-defined string is displayed as a
+            system-generated hyperlink pointing to detailed policy information.<br><br><b>Max
+            length:</b> 65
+          type: string
+        name:
+          description: The seller-defined name for the custom policy. Names must be
+            unique for policies assigned to the same seller, policy type, and eBay
+            marketplace.<br /><span class="tablenote"><strong>Note:</strong> This
+            field is visible only to the seller. </span><br/><br/><b>Max length:</b>
+            65
+          type: string
+      type: object
+    CustomPolicyResponse:
+      example:
+        next: next
+        customPolicies:
+        - policyType: policyType
+          name: name
+          customPolicyId: customPolicyId
+          label: label
+        - policyType: policyType
+          name: name
+          customPolicyId: customPolicyId
+          label: label
+        total: 1
+        offset: 6
+        prev: prev
+        limit: 0
+        href: href
+      properties:
+        customPolicies:
+          description: This array contains the custom policies that match the input
+            criteria.
+          items:
+            $ref: '#/components/schemas/CompactCustomPolicyResponse'
+          type: array
+        href:
+          description: <i>This field is for future use.</i>
+          type: string
+        limit:
+          description: <i>This field is for future use.</i>
+          format: int32
+          type: integer
+        next:
+          description: <i>This field is for future use.</i>
+          type: string
+        offset:
+          description: <i>This field is for future use.</i>
+          format: int32
+          type: integer
+        prev:
+          description: <i>This field is for future use.</i>
+          type: string
+        total:
+          description: <i>This field is for future use.</i>
+          format: int32
+          type: integer
+      type: object
     Deposit:
       description: A container that describes the details of a deposit. Used only
         with motor listings.
@@ -2140,13 +2690,11 @@ components:
         dueIn:
           $ref: '#/components/schemas/TimeDuration'
         paymentMethods:
-          description: This array is only necessary for sellers who have <em>not</em>
-            been onboarded for eBay managed payments, and the only value that should
-            be set is '<code>PAYPAL</code>'. <br /><br />The <b>brands</b> field is
-            not applicable when setting a motor vehicle deposit. Set the <b>paymentMethodType</b>
-            value to <code>PAYPAL</code>, the <b>recipientAccountReference.referenceType</b>
-            field to <code>PAYPAL_EMAIL</code>, and insert the PayPal payment address
-            into the <b>recipientAccountReference.referenceId</b> field.
+          description: For deposits (which are applicable to only motor listings),
+            the <b>paymentMethodType</b> must be set to '<code>PAYPAL</code>' and
+            you must also populate the fields in the <b>recipientAccountReference</b>
+            object.  <br><br><i>Required if</i> your motor vehicles listing requires
+            a deposit.
           items:
             $ref: '#/components/schemas/PaymentMethod'
           type: array
@@ -2159,7 +2707,7 @@ components:
         outputRefIds:
         - outputRefIds
         - outputRefIds
-        errorId: 0
+        errorId: 1
         inputRefIds:
         - inputRefIds
         - inputRefIds
@@ -2481,31 +3029,33 @@ components:
         pickupDropOff:
           description: 'If set to <code>true</code>, the seller offers the "Click
             and Collect" feature. Click and Collect is supported by the Inventory
-            API, and it can be used with Add/Revise/Relist calls.  <br /><br />To
-            enable "Click and Collect", a seller (1) must be eligible for Click and
-            Collect and (2) must set this boolean field to ''true''. Currently, Click
-            and Collect is available to only large retail merchants selling in the
-            eBay AU and UK marketplaces.  <br /><br />In addition to setting this
-            field, the merchant must also do the following to enable the "Click and
-            Collect" option on a listing: <ul><li>Have inventory for the product at
-            one or more physical stores tied to the merchant''s account. <br />Sellers
-            can use the <b>createInventoryLocaion</b> method in the Inventory API
-            to associate physical stores to their account and they can then can add
-            inventory to specific store locations.</li><li>Set an immediate payment
-            requirement on the item. The immediate payment feature requires the seller
-            to: <ul><li>Set the <b>immediatePay</b> flag in the payment policy to
-            ''true''.</li><li>Have a valid store location with a complete street address.</li></ul></li></ul><br
-            /><br /> <span class="tablenote"><b>Note</b>: Sellers not enabled for
-            eBay managed payments have the following additional requirements:<ul><li>Include
-            only one <b>paymentMethods</b> field in the payment policy and set its
-            value to <code>PAYPAL</code>.</li><li>Include a valid PayPal payment address
-            in the <b>recipientAccountReference.referenceId</b> field of the payment
-            policy.</li></ul></span> <br /><br />When a merchant successfully lists
-            an item with Click and Collect, prospective buyers within a reasonable
+            API, and it can be used with Add/Revise/Relist calls.  <p>To enable "Click
+            and Collect", a seller (1) must be eligible for Click and Collect and
+            (2) must set this boolean field to ''true''. Currently, Click and Collect
+            is available to only large retail merchants selling in the eBay AU and
+            UK marketplaces.</p>  <p>In addition to setting this field, the merchant
+            must also do the following to enable the "Click and Collect" option on
+            a listing: <ul><li>Have inventory for the product at one or more physical
+            stores tied to the merchant''s account. <p>Sellers can use the <b>createInventoryLocaion</b>
+            method in the Inventory API to associate physical stores to their account
+            and they can then can add inventory to specific store locations.</p></li><li>Set
+            an immediate payment requirement on the item. The immediate payment feature
+            requires the seller to: <ul><li>Set the <b>immediatePay</b> flag in the
+            payment policy to ''true''.</li><li>Include only one <b>paymentMethods</b>
+            field in the payment policy and set its value to <code>PAYPAL</code>.</li><li>Include
+            a valid PayPal payment address in the <b>recipientAccountReference.referenceId</b>
+            field of the payment policy.</li><li>Have a valid store location with
+            a complete street address.</li></ul></li></ul> <br /><br /><span class="tablenote"><b>Note</b>:
+            Sellers not enabled for eBay managed payments have the following additional
+            requirements:<ul><li>Include only one <b>paymentMethods</b> field in the
+            payment policy and set its value to <code>PAYPAL</code>.</li><li>Include
+            a valid PayPal payment address in the <b>recipientAccountReference.referenceId</b>
+            field of the payment policy.</li></ul></span><p>When a merchant successfully
+            lists an item with Click and Collect, prospective buyers within a reasonable
             distance from one of the merchant''s stores (that has stock available)
             will see the "Available for Click and Collect" option on the listing,
-            along with information on the closest store that has the item.<br /><br
-            /><b>Default</b>: false'
+            along with information on the closest store that has the item.</p><b>Default</b>:
+            false'
           type: boolean
         shippingOptions:
           description: A list that defines the seller's shipping configurations for
@@ -2716,8 +3266,7 @@ components:
           type: array
         description:
           description: 'An optional seller-defined description of the fulfillment
-            policy for internal use (this value is not displayed to end users).  <br><br><b>Max
-            length</b>: 250'
+            policy.  <br><br><b>Max length</b>: 250'
           type: string
         freightShipping:
           description: 'If set to <code>true</code>, the seller offers freight shipping.  Freight
@@ -2762,31 +3311,28 @@ components:
         pickupDropOff:
           description: 'If set to <code>true</code>, the seller offers the "Click
             and Collect" feature. Click and Collect is supported by the Inventory
-            API, and it can be used with Add/Revise/Relist calls.  <br /><br />To
-            enable "Click and Collect", a seller (1) must be eligible for Click and
-            Collect and (2) must set this boolean field to ''true''. Currently, Click
-            and Collect is available to only large retail merchants selling in the
-            eBay AU and UK marketplaces.  <br /><br />In addition to setting this
-            field, the merchant must also do the following to enable the "Click and
-            Collect" option on a listing: <ul><li>Have inventory for the product at
-            one or more physical stores tied to the merchant''s account. <br />Sellers
-            can use the <b>createInventoryLocaion</b> method in the Inventory API
-            to associate physical stores to their account and they can then can add
-            inventory to specific store locations.</li><li>Set an immediate payment
-            requirement on the item. The immediate payment feature requires the seller
-            to: <ul><li>Set the <b>immediatePay</b> flag in the payment policy to
-            ''true''.</li><li>Have a valid store location with a complete street address.</li></ul></li></ul><br
-            /><br /> <span class="tablenote"><b>Note</b>: Payments that are not handled
-            by eBay managed payments have the following additional requirements:<ul><li>Include
-            only one <b>paymentMethods</b> field in the payment policy and set its
-            value to <code>PAYPAL</code>.</li><li>Include a valid PayPal payment address
-            in the <b>recipientAccountReference.referenceId</b> field of the payment
-            policy.</li></ul></span> <br /><br />When a merchant successfully lists
-            an item with Click and Collect, prospective buyers within a reasonable
+            API, and it can be used with Add/Revise/Relist calls.  <p>To enable "Click
+            and Collect", a seller (1) must be eligible for Click and Collect and
+            (2) must set this boolean field to ''true''. Currently, Click and Collect
+            is available to only large retail merchants selling in the eBay AU and
+            UK marketplaces.</p>  <p>In addition to setting this field, the merchant
+            must also do the following to enable the "Click and Collect" option on
+            a listing: <ul><li>Have inventory for the product at one or more physical
+            stores tied to the merchant''s account. <p>Sellers can use the <b>createInventoryLocaion</b>
+            method in the Inventory API to associate physical stores to their account
+            and they can then can add inventory to specific store locations.</p></li><li>Set
+            an immediate payment requirement on the item. The immediate payment feature
+            requires the seller to: <ul><li>Set the <b>immediatePay</b> flag in the
+            payment policy to ''true''.</li><li>Include only one <b>paymentMethods</b>
+            field in the payment policy and set its value to <code>PAYPAL</code>.</li>
+            <li>Include a valid PayPal payment address in the <b>recipientAccountReference.referenceId</b>
+            field of the payment policy.</li><li>Have a valid store location with
+            a complete street address.</li></ul></li></ul><p>When a merchant successfully
+            lists an item with Click and Collect, prospective buyers within a reasonable
             distance from one of the merchant''s stores (that has stock available)
             will see the "Available for Click and Collect" option on the listing,
-            along with information on the closest store that has the item.<br /><br
-            /><b>Default</b>: false'
+            along with information on the closest store that has the item.</p><b>Default</b>:
+            false'
           type: boolean
         shippingOptions:
           description: A list that defines the seller's shipping configurations for
@@ -3142,10 +3688,10 @@ components:
               regionName: regionName
             - regionType: regionType
               regionName: regionName
-        total: 5
-        offset: 5
+        total: 1
+        offset: 6
         prev: prev
-        limit: 1
+        limit: 0
         href: href
       properties:
         fulfillmentPolicies:
@@ -3415,20 +3961,40 @@ components:
         deposit:
           $ref: '#/components/schemas/Deposit'
         description:
-          description: 'An optional seller-defined description of the payment policy.  <br><br><b>Max
+          description: 'An optional seller-defined description of the payment policy
+            for internal use (this value is not displayed to end users).  <br><br><b>Max
             length</b>: 250'
           type: string
         fullPaymentDueIn:
           $ref: '#/components/schemas/TimeDuration'
         immediatePay:
-          description: If this field is returned as <code>true</code>, immediate payment
-            is required from the buyer for a fixed-price item or for an auction item
-            where the buyer uses the 'Buy it Now' option.<br /><br />It is possible
-            for the seller to set this field as <code>true</code> in the payment policy,
-            but it will not apply in some scenarios. For example, immediate payment
-            is not applicable for auction listings that have a winning bidder, for
-            buyer purchases that involve the Best Offer feature, or for transactions
-            that happen offline between the buyer and seller.
+          description: 'If set to <code>true</code>, payment is due upon receipt (eBay
+            generates a receipt when the buyer agrees to purchase an item). <br><br>This
+            boolean must be set in the payment policy if the seller wants to create
+            a listing that has an "immediate payment" requirement. The seller can
+            change the immediate payment requirement at any time during the life cycle
+            of a listing. <br><br>The following must be true before a seller can apply
+            an immediate payment requirement to an item:<ul><li>The seller must have
+            a PayPal Business account.</li><li>The Buy It Now price cannot be higher
+            than $60,000 USD.</li><li>The eBay marketplace on which the item is listed
+            must support PayPal payments.</li><li>The listing type must be fixed-price,
+            or an auction with a Buy It Now option.</li></ul>To enable the immediate
+            payment requirement, the seller must also perform the following actions
+            via API calls:<ul><li>Provide a valid <b>paymentMethods.recipientAccountReference.referenceId</b>
+            value.</li><li>Offer PayPal as the only payment method for the item(s).</li><li>Specify
+            all related costs to the buyer (because the buyer is not be able to use
+            the Buyer Request Total feature in an immediate payment listing); these
+            costs include flat-rate shipping costs for each domestic and international
+            shipping service offered, package handling costs, and any shipping surcharges.</li><li>Include
+            and set the <b>shippingProfileDiscountInfo</b> container values if you
+            are going to use promotional shipping discounts.</li></ul>For more information,
+            see the <a href="http://pages.ebay.com/help/pay/require-immediate-payment.html">Understanding
+            immediate payment</a> Help page. <br><br><span class="tablenote"><b>Note:</b>
+            Listings created with the Inventory API must reference a payment policy
+            that has <b>immediatePay</b> is set to <code>true</code>. Items listed
+            with the Inventory API must also be fixed-price good-till-canceled (GTC)
+            listings where PayPal is the only supported payment method (<b>paymentMethod</b>
+            must be set to <code>PAYPAL</code>).</span> <br><br><b>Default</b>: false'
           type: boolean
         marketplaceId:
           description: The ID of the eBay marketplace to which the payment policy
@@ -3812,14 +4378,18 @@ components:
         status: status
       properties:
         marketplaceId:
-          description: The ID of the eBay marketplace to which the payment program
-            applies. For implementation help, refer to <a href='https://developer.ebay.com/api-docs/sell/account/types/ba:MarketplaceIdEnum'>eBay
+          description: The ID of the eBay marketplace to which the payment policy
+            applies. If this value is not specified in the request, the value defaults
+            to the seller's eBay registration site. For implementation help, refer
+            to <a href='https://developer.ebay.com/api-docs/sell/account/types/ba:MarketplaceIdEnum'>eBay
             API documentation</a>
           type: string
         paymentsProgramType:
-          description: This parameter specifies the payment program whose status is
-            returned by the call.  <br><br>Currently the only supported payments program
-            is <code>EBAY_PAYMENTS</code>. For implementation help, refer to <a href='https://developer.ebay.com/api-docs/sell/account/types/api:PaymentsProgramType'>eBay
+          description: This path parameter specifies the payment program whose status
+            is returned by the call.  <br><br>Currently the only supported payments
+            program is <code>EBAY_PAYMENTS</code>. For details on the program, see
+            <a href="https://pages.ebay.com/payment/2.0/terms.html" target="_blank">Payments
+            Terms of Use</a>. For implementation help, refer to <a href='https://developer.ebay.com/api-docs/sell/account/types/api:PaymentsProgramType'>eBay
             API documentation</a>
           type: string
         status:
@@ -3829,14 +4399,14 @@ components:
             API documentation</a>
           type: string
         wasPreviouslyOptedIn:
-          description: If returned as <code>true</code>, the seller was at one point
-            opted-in to the associated payment program, but they later opted out of
-            the program. A value of <code>false</code> indicates the seller never
-            opted-in to the program or if they did opt-in to the program, they never
-            opted-out of it.  <br><br>It's important to note that the setting of this
-            field does not indicate the seller's current status regarding the payment
-            program. It is possible for this field to return <code>true</code> while
-            the <b>status</b> field returns <code>OPTED_IN</code>.
+          description: If set to <code>true</code>, the seller was at one point opted-in
+            to the associated payment program, but they later opted out of the program.
+            A value of <code>false</code> indicates the seller never opted-in to the
+            program or if they did opt-in to the program, they never opted-out of
+            it.  <br><br>It's important to note that the setting of this field does
+            not indicate the seller's current status regarding the payment program.
+            It is possible for this field to return <code>true</code> while the <b>status</b>
+            field returns <code>OPTED_IN</code>.
           type: boolean
       type: object
     Program:
@@ -4635,7 +5205,7 @@ components:
           outputRefIds:
           - outputRefIds
           - outputRefIds
-          errorId: 0
+          errorId: 1
           inputRefIds:
           - inputRefIds
           - inputRefIds
@@ -4652,7 +5222,7 @@ components:
           outputRefIds:
           - outputRefIds
           - outputRefIds
-          errorId: 0
+          errorId: 1
           inputRefIds:
           - inputRefIds
           - inputRefIds
@@ -4887,7 +5457,8 @@ components:
             to associate with the shipping services. <br><br>Each <b>shippingOption</b>
             element has a <b>shippingServices</b> container that defines the list
             of shipping services (domestic or international) offered with this fulfillment
-            policy.
+            policy. See <a href="/api-docs/sell/static/seller-accounts/configuring-shipping-options.html"
+            target="_blank">Configuring shipping options</a>.
           items:
             $ref: '#/components/schemas/ShippingOption'
           type: array
@@ -4932,7 +5503,7 @@ components:
           outputRefIds:
           - outputRefIds
           - outputRefIds
-          errorId: 0
+          errorId: 1
           inputRefIds:
           - inputRefIds
           - inputRefIds
@@ -4949,7 +5520,7 @@ components:
           outputRefIds:
           - outputRefIds
           - outputRefIds
-          errorId: 0
+          errorId: 1
           inputRefIds:
           - inputRefIds
           - inputRefIds
@@ -5008,26 +5579,33 @@ components:
         fullPaymentDueIn:
           $ref: '#/components/schemas/TimeDuration'
         immediatePay:
-          description: The value returned in this field will reflect the value set
-            by the seller in the <b>immediatePay</b> request field. A value of <code>true</code>
-            indicates that immediate payment is required from the buyer for a fixed-price
-            item or for an auction item where the buyer is using the 'Buy it Now'
-            option.<br /><br />It is possible for the seller to set this field as
-            <code>true</code> in the payment policy, but it will not apply in some
-            scenarios. For example, immediate payment is not applicable for auction
-            listings that have a winning bidder, for buyer purchases that involve
-            the Best Offer feature, or for transactions that happen offline between
-            the buyer and seller.
+          description: If set to <code>true</code>,  payment is due upon receipt (eBay
+            generates a receipt when the buyer agrees to purchase an item). The items
+            will be available for other buyers until the payment is complete.<br /><br
+            />This boolean must be set in the payment policy if the seller wants to
+            create a listing that has an <i>immediate payment</i> requirement. <p
+            class="tablenote"><b>Note:</b> This container can be used for sellers
+            who opt-in to the <a href="/managed-payments" title="eBay Developers Program
+            page" target="_blank">managed payments</a> program, but some requirements
+            do not apply.</p><b>Default:</b> False
           type: boolean
         marketplaceId:
           description: The ID of the eBay marketplace to which this payment policy
-            applies. For implementation help, refer to <a href='https://developer.ebay.com/api-docs/sell/account/types/ba:MarketplaceIdEnum'>eBay
+            applies. If this value is not specified, the value defaults to the seller's
+            eBay registration site. <p class="tablenote"><b>Note:</b> A limited number
+            of sellers, on a limited number of eBay marketplaces, are currently opted-in
+            to the eBay managed payments program. To view the eBay marketplaces where
+            managed payments are currently supported, see the <a href="/managed-payments"
+            title="eBay Developers Program page" target="_blank">managed payments</a>
+            landing page.</p> For implementation help, refer to <a href='https://developer.ebay.com/api-docs/sell/account/types/ba:MarketplaceIdEnum'>eBay
             API documentation</a>
           type: string
         name:
-          description: A user-defined name for this payment policy. Names must be
-            unique for policies assigned to the same marketplace.<b>Max length:</b>
-            64
+          description: 'A user-defined name for this payment policy. Names must be
+            unique for policies assigned to the same marketplace. <p class="tablenote"><b>Note</b>:
+            eBay will create a new payment policy for sellers who opt-in to the <a
+            href="/managed-payments" title="eBay Developers Program page" target="_blank">managed
+            payments</a> program.</p><b>Max length:</b> 64'
           type: string
         paymentInstructions:
           description: <p class="tablenote"><b>Note:</b> NO LONGER SUPPORTED. Although
@@ -5044,22 +5622,18 @@ components:
             <br><br>The field allows only 500 characters as input, but due to the
             way the eBay web site UI treats characters, this field can return more
             than 500 characters in the response. For example, characters like & and
-            ' (ampersand and single quote) count as 5 characters each. <p class="tablenote"><b>Note:</b>
-            This field applies only to offline payment types.</p><p class="tablenote"><b>Restriction:</b>
-            This container is not supported for sellers who are enabled for the <a
-            href="/managed-payments" title="eBay Developers Program page" target="_blank">managed
-            payments</a> program, except in the case of Motors listings.</p>  <br><br><b>Max
-            length:</b> 1000
+            ' (ampersand and single quote) count as 5 characters each. <br /><br /><b>Restriction:</b>
+            This container is not supported for sellers who opt-in to the <a href="/managed-payments"
+            title="eBay Developers Program page" target="_blank">managed payments</a>
+            program.  <br><br><b>Max length:</b> 1000
           type: string
         paymentMethods:
-          description: This array shows the available payment methods that the seller
-            has set for the payment policy.<br /><br />For sellers who are onboarded
-            with eBay managed payments, this array is usually returned as empty because
-            managed payments sellers do not have to specify electronic payment methods.
-            For listings where an offline payment is applicable, a managed payments
-            seller will have to specify one or more offline payment methods.<br /><br
-            />For sellers who are not onboarded for managed payments, at least one
-            payment method is required.
+          description: If the seller is not opted-in to managed payments, this container
+            returns a list of the payment methods accepted by the seller.  <br><br>When
+            not opted-in to managed payments, each payment policy must specify at
+            least one payment method. <p class="tablenote"><b>Note:</b> The <b>paymentMethods</b>
+            container is not returned if the seller is opted-in to the <a href="https://pages.ebay.com/seller-center/service-and-payments/managed-payments-on-ebay.html"
+            title="eBay Seller Center page" target="_blank">managed payments</a> program.</p>
           items:
             $ref: '#/components/schemas/PaymentMethod'
           type: array
@@ -5091,7 +5665,7 @@ components:
           outputRefIds:
           - outputRefIds
           - outputRefIds
-          errorId: 0
+          errorId: 1
           inputRefIds:
           - inputRefIds
           - inputRefIds
@@ -5108,7 +5682,7 @@ components:
           outputRefIds:
           - outputRefIds
           - outputRefIds
-          errorId: 0
+          errorId: 1
           inputRefIds:
           - inputRefIds
           - inputRefIds
@@ -5371,8 +5945,11 @@ components:
             separate <b>shippingService</b> containers for each. Note that if the
             seller is opted in to the Global Shipping Program, they can specify only
             four other international shipping services, regardless of whether or not
-            Global Shipping is offered as one of the services.  <br><br><i>Required
-            if </i> the policy offers shipping options using a <b>shippingOptions</b>
+            Global Shipping is offered as one of the services.  <br><br> See <a href="/api-docs/sell/static/seller-accounts/ht_shipping-setting-shipping-carrier-and-service-values.html"
+            target="_blank">How to set up shipping carrier and shipping service values</a>.
+            <br /><br />To use the eBay standard envelope service (eSE), see <a href="/api-docs/sell/static/seller-accounts/using-the-ebay-standard-envelope-service.html"
+            target="_blank">Using eBay standard envelope (eSE) service</a>.<br /><br
+            /><i>Required if </i> the policy offers shipping options using a <b>shippingOptions</b>
             container.
           items:
             $ref: '#/components/schemas/ShippingService'
@@ -5454,8 +6031,10 @@ components:
         shippingServiceCode:
           description: The shipping service that the shipping carrier uses to ship
             an item. For example, an overnight, two-day delivery, or other type of
-            service. For details on configuring shipping services, see <a href="/api-docs/sell/static/seller-accounts/ht_shipping-free.html#shippingServices">Setting
-            the shipping carrier and shipping service values</a>.
+            service. For details on how shipping services are configured, see <a href="/api-docs/sell/static/seller-accounts/ht_shipping-setting-shipping-carrier-and-service-values.html"
+            target="_blank">Setting the shipping carrier and shipping service values</a>
+            and <a href="/api-docs/sell/static/seller-accounts/using-the-ebay-standard-envelope-service.html"
+            target="_blank">Using eBay standard envelope (eSE) service</a>.
           type: string
         shipToLocations:
           $ref: '#/components/schemas/RegionSet'

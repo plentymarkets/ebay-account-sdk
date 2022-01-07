@@ -6,7 +6,7 @@ Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **Amount** | Pointer to [**Amount**](Amount.md) |  | [optional] 
 **DueIn** | Pointer to [**TimeDuration**](TimeDuration.md) |  | [optional] 
-**PaymentMethods** | Pointer to [**[]PaymentMethod**](PaymentMethod.md) | This array is only necessary for sellers who have &lt;em&gt;not&lt;/em&gt; been onboarded for eBay managed payments, and the only value that should be set is &#39;&lt;code&gt;PAYPAL&lt;/code&gt;&#39;. &lt;br /&gt;&lt;br /&gt;The &lt;b&gt;brands&lt;/b&gt; field is not applicable when setting a motor vehicle deposit. Set the &lt;b&gt;paymentMethodType&lt;/b&gt; value to &lt;code&gt;PAYPAL&lt;/code&gt;, the &lt;b&gt;recipientAccountReference.referenceType&lt;/b&gt; field to &lt;code&gt;PAYPAL_EMAIL&lt;/code&gt;, and insert the PayPal payment address into the &lt;b&gt;recipientAccountReference.referenceId&lt;/b&gt; field. | [optional] 
+**PaymentMethods** | Pointer to [**[]PaymentMethod**](PaymentMethod.md) | For deposits (which are applicable to only motor listings), the &lt;b&gt;paymentMethodType&lt;/b&gt; must be set to &#39;&lt;code&gt;PAYPAL&lt;/code&gt;&#39; and you must also populate the fields in the &lt;b&gt;recipientAccountReference&lt;/b&gt; object.  &lt;br&gt;&lt;br&gt;&lt;i&gt;Required if&lt;/i&gt; your motor vehicles listing requires a deposit. | [optional] 
 
 ## Methods
 

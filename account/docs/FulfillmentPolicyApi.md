@@ -4,7 +4,7 @@ All URIs are relative to *https://api.ebay.com/sell/account/v1*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
-[**CreateFulfillmentPolicy**](FulfillmentPolicyApi.md#CreateFulfillmentPolicy) | **Post** /fulfillment_policy | 
+[**CreateFulfillmentPolicy**](FulfillmentPolicyApi.md#CreateFulfillmentPolicy) | **Post** /fulfillment_policy/ | 
 [**DeleteFulfillmentPolicy**](FulfillmentPolicyApi.md#DeleteFulfillmentPolicy) | **Delete** /fulfillment_policy/{fulfillmentPolicyId} | 
 [**GetFulfillmentPolicies**](FulfillmentPolicyApi.md#GetFulfillmentPolicies) | **Get** /fulfillment_policy | 
 [**GetFulfillmentPolicy**](FulfillmentPolicyApi.md#GetFulfillmentPolicy) | **Get** /fulfillment_policy/{fulfillmentPolicyId} | 
